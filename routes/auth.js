@@ -3,12 +3,14 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const { handleMongoError } = require('../middleware/auth');
+const { JWT_SECRET } = require('../config');
 
 // Authentication middleware
 const auth = async (req, res, next) => {
   try {
     const token = req.header('Authorization').replace('Bearer ', '');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.userId;
     next();
   } catch (error) {
@@ -24,11 +26,12 @@ router.post('/signup', async (req, res) => {
     
     const token = jwt.sign(
       { userId: user._id }, 
-      process.env.JWT_SECRET || 'your-secret-key'
+      JWT_SECRET
     );
     res.status(201).json({ token, user: { id: user._id, username, email } });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    let errorMessage = handleMongoError(error).message;
+    res.status(400).json({ error: errorMessage });
   }
 });
 
@@ -47,11 +50,12 @@ router.post('/login', async (req, res) => {
     
     const token = jwt.sign(
       { userId: user._id }, 
-      process.env.JWT_SECRET || 'your-secret-key'
+      JWT_SECRET
     );
     res.json({ token, user: { id: user._id, username: user.username, email } });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    let errorMessage = handleMongoError(error).message;
+    res.status(400).json({ error: errorMessage });
   }
 });
 
@@ -66,7 +70,8 @@ router.post('/games/save', auth, async (req, res) => {
     await user.save();
     res.json({ highScore: user.highScore, gamesPlayed: user.gamesPlayed });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    let errorMessage = handleMongoError(error).message;
+    res.status(400).json({ error: errorMessage });
   }
 });
 
